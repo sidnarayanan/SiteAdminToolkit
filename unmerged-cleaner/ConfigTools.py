@@ -88,7 +88,8 @@ def guess_site():
         'ufl.edu':        'T2_US_Florida',
         'mit.edu':        'T2_US_MIT',
         'unl.edu':        'T2_US_Nebraska',
-        'ucsd.edu':       'T2_US_UCSD'
+        'ucsd.edu':       'T2_US_UCSD',
+        'cern.ch':        'T2_CH_CERN',
         }
 
     for check, item in host_map.iteritems():
@@ -126,6 +127,7 @@ DEFAULTS = {
     'MIN_AGE':       60 * 60 * 24 * 7 * 2,    # Corresponds to two weeks
     'WHICH_LIST':    'directories',
     'SLEEP_TIME':    0.5,
+    'NPROC':         1,
 }
 
 DOCS = {
@@ -165,6 +167,10 @@ DOCS = {
          'The sleep avoids overloading the system and '
          'allows the operator to interrupt a deletion.\n'
          'The default is ``%s``.' % DEFAULTS['SLEEP_TIME']),
+    'NPROC':
+        ('Max number of threads to spawn to list directories. Note that NPROC=1 will spawn\n'
+         'no additional threads. NPROC=2, e.g., will spawn 2 additional threads, leaving you\n'
+         'with a total of 3 (1 for the master process and up to 2 for the listings).')
 }
 
 VAR_ORDER = [
@@ -177,6 +183,7 @@ VAR_ORDER = [
     'DIRS_TO_AVOID',
     'MIN_AGE',
     'STORAGE_TYPE',
+    'NPROC',
     ]
 
 

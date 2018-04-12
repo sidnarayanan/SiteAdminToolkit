@@ -67,10 +67,13 @@ import time
 import datetime
 import subprocess
 import shutil
+from sys import stdout
 from bisect import bisect_left
 from optparse import OptionParser
+from multiprocessing import Pool
 
 import ConfigTools
+
 
 
 if __name__ == '__main__':
@@ -245,6 +248,8 @@ def list_folder(name, opt):
     :rtype: list
     """
 
+    if 'unmerged/data' in name:
+        return []
     # This is where the call is made depending on what
     # file system the site is running, should add more as we go on
     if opt == 'subdirs':
@@ -254,8 +259,14 @@ def list_folder(name, opt):
         # Return list of files
         the_filter = os.path.isfile
 
-    return [listing for listing in os.listdir(name) if
-            the_filter(os.path.join(name, listing))]
+    while True:
+        try:
+            return [listing for listing in os.listdir(name) if
+                    the_filter(os.path.join(name, listing))]
+        except OSError:
+            print 'Could not list %s, trying again!'%name
+            stdout.flush()
+            time.sleep(2)
 
 
 def get_mtime(name):
@@ -528,6 +539,105 @@ def filter_protected(unmerged_files, protected):
 
     print 'Number to delete: %i,\nNumber protected/avoided: %i' % (n_delete, n_protect)
 
+def sum_int_or_list(l):
+    base = 0 if type(l[0]) == int else []
+    return sum(l, base)
+
+class QueueItem(object):
+    """
+    An object that contains some information that can be put in a Queue for later access
+    """
+
+    def __init__(self, **kwargs):
+        """
+        Initializes the QueueItem.
+        :param kwargs: anything you would like to bind
+        """
+        self.fields = []
+        for k,v in kwargs.iteritems():
+            self.fields.append(k)
+            setattr(self, k, v)
+
+    @classmethod
+    def merge(cls, to_merge):
+        """
+        Merges multiple QueueItems. Assumption is that
+        they contain identical data members.
+        :param list to_merge:  List of QueueItems
+        :return Merged version of inputs
+        :rtype QueueItem
+        """
+        assert(len(to_merge) > 0)
+        d = dict([(k,sum_int_or_list([getattr(x, k) for x in to_merge]))
+                  for k in to_merge[0].fields])
+
+        return cls(**d)
+
+
+def traverse_toplevel(subdir):
+    """
+    Traverse a top-level directory and return the list of deletable directories and some stats
+    :param str subdir Subdirectory path
+    :return Return
+    :rtype QueueItem
+    """
+    print 'Listing',subdir
+    stdout.flush()
+    dirs_to_delete = []
+
+    tot_upper_dirs = 0
+    tot_dirs = 0
+    tot_files = 0
+    tot_site = 0
+
+    top_node = DataNode(subdir)
+    top_node.fill()
+
+    list_to_del = []
+    top_node.traverse_tree(list_to_del)
+
+    num_todelete_dirs = 0   # Number of directories to be deleted
+    num_todelete_files = 0  # Number of files to be deleted
+    todelete_size = 0       # Amount of space to be deleted (in GB, eventually)
+
+    if len(list_to_del) < 1:
+        return QueueItem(dirs_to_delete=dirs_to_delete,
+                         tot_upper_dirs=tot_upper_dirs,
+                         tot_files=tot_files,
+                         tot_dirs=tot_dirs,
+                         tot_site=todelete_size)
+
+
+    for item in list_to_del:
+        num_todelete_dirs += item.nsubnodes
+        num_todelete_files += item.nsubfiles
+        todelete_size += item.size
+
+    todelete_size /= (1024 * 1024 * 1024)
+    print "  %-8d %-8d %-6d %-9d %-s" \
+        % (len(list_to_del), num_todelete_dirs, num_todelete_files,
+           todelete_size, subdir)
+    stdout.flush()
+
+    tot_upper_dirs += len(list_to_del)
+    tot_dirs += num_todelete_dirs
+    tot_files += num_todelete_files
+    tot_site += todelete_size
+
+    dirs_to_delete.extend(list_to_del)
+
+    with open(config.DELETION_FILE.replace('.txt','_'+subdir.split('/')[-1]+'.txt'), 'w') as del_file:
+        del_file.write(
+            '\n'.join(
+                [os.path.join(config.UNMERGED_DIR_LOCATION, item.path_name) \
+                     for item in dirs_to_delete]
+                ) + '\n')
+    
+    return QueueItem(dirs_to_delete=dirs_to_delete,
+                     tot_upper_dirs=tot_upper_dirs,
+                     tot_files=tot_files,
+                     tot_dirs=tot_dirs,
+                     tot_site=todelete_size)
 
 def main():
     """
@@ -573,43 +683,19 @@ def main():
         dirs = [subdir for subdir in list_folder(config.UNMERGED_DIR_LOCATION, 'subdirs') \
                     if subdir not in config.DIRS_TO_AVOID]
 
-        dirs_to_delete = []
 
-        tot_upper_dirs = 0
-        tot_dirs = 0
-        tot_files = 0
-        tot_site = 0
-
-        for subdir in dirs:
-            top_node = DataNode(subdir)
-            top_node.fill()
-
-            list_to_del = []
-            top_node.traverse_tree(list_to_del)
-
-            if len(list_to_del) < 1:
-                continue
-
-            num_todelete_dirs = 0   # Number of directories to be deleted
-            num_todelete_files = 0  # Number of files to be deleted
-            todelete_size = 0       # Amount of space to be deleted (in GB, eventually)
-
-            for item in list_to_del:
-                num_todelete_dirs += item.nsubnodes
-                num_todelete_files += item.nsubfiles
-                todelete_size += item.size
-
-            todelete_size /= (1024 * 1024 * 1024)
-            print "  %-8d %-8d %-6d %-9d %-s" \
-                % (len(list_to_del), num_todelete_dirs, num_todelete_files,
-                   todelete_size, subdir)
-
-            tot_upper_dirs += len(list_to_del)
-            tot_dirs += num_todelete_dirs
-            tot_files += num_todelete_files
-            tot_site += todelete_size
-
-            dirs_to_delete.extend(list_to_del)
+        if config.NPROC == 1:
+            q = [traverse_toplevel(subdir) for subdir in dirs]
+        else:
+            pool = Pool(processes=config.NPROC)
+            q = list(pool.map(traverse_toplevel, dirs))
+        merged = QueueItem.merge(q)
+        dirs_to_delete = merged.dirs_to_delete
+        tot_upper_dirs = merged.tot_upper_dirs
+        tot_files      = merged.tot_files
+        tot_site       = merged.tot_site
+        tot_dirs       = merged.tot_dirs
+        
 
         print "-" * 30
         print "  %-8d %-8d %-6d %-9d TOTALS" % (tot_upper_dirs, tot_dirs, tot_files, tot_site)
