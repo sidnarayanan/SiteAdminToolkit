@@ -16,7 +16,7 @@ SITE_NAME = 'T2_CH_CERN'
 # will not need to be changed, but it is possible for a /store/dcachetests/unmerged
 # directory to exist, for example. The default is '/store/unmerged'.
 
-LFN_TO_CLEAN = '/store/unmerged'
+LFN_TO_CLEAN = '/store/logs/prod/recent'
 
 #---------------------------------------------------------------------------------------------------
 # The location, or PFN, of the unmerged directory. This can be
@@ -36,7 +36,7 @@ WHICH_LIST = 'directories'
 # The default is '/tmp/<WHICH_LIST>_to_delete.txt'.
 
 #DELETION_FILE = '/afs/cern.ch/work/s/snarayan/public/unmerged/%s_to_delete.txt' % WHICH_LIST
-DELETION_FILE = '/tmp/phedex/unmerged/%s_to_delete.txt' % WHICH_LIST
+DELETION_FILE = '/tmp/phedex/unmerged_logs/%s_to_delete.txt' % WHICH_LIST
 
 #---------------------------------------------------------------------------------------------------
 # This is the number of seconds between each deletion of a directory or file.
@@ -50,14 +50,14 @@ SLEEP_TIME = 0.5
 # the unmerged location is checked against this if WHICH_LIST is 'directories'.
 # The defaults are ['SAM', 'logs'].
 
-DIRS_TO_AVOID = ['SAM', 'logs', 'data', 'express']
+DIRS_TO_AVOID = ['logs']
 
 #---------------------------------------------------------------------------------------------------
 # Directories with an age less than this, in seconds, will not be deleted.
 # The default (1209600) corresponds to two weeks.
 # Mathematical expressions here are evaluated.
 
-MIN_AGE = 1209600
+MIN_AGE = 2*30*24*60*60 # 2 months
 
 #---------------------------------------------------------------------------------------------------
 # This defines the storage type of the site. This may be necessary for the script to run
@@ -68,7 +68,7 @@ STORAGE_TYPE = 'posix'
 
 #---------------------------------------------------------------------------------------------------
 # Max number of threads to spawn to list directories. Note that NPROC=1 will spawn
-# no additional threads. NPROC=2, e.g., will spawn 2 additional threads, leaving you
+# no additional threads. NPROC=2, e.g., will spawn 2 additional processes, leaving you
 # with a total of 3 (1 for the master process and up to 2 for the listings).
 
-NPROC = 1
+NPROC = 10

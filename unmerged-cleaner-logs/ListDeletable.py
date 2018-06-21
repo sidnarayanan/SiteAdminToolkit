@@ -407,7 +407,7 @@ def do_delete():
             deleting = deleted.strip('\n')
 
             # Do a check of the directory names. End process if something is wrong.
-            if '/unmerged/' not in deleting:
+            if '/logs/' not in deleting:
                 print 'Something is either wrong with your deletions file or'
                 print 'ListDetetable.do_delete().'
                 print 'Your deletions file is at', config.DELETION_FILE
@@ -659,21 +659,6 @@ def main():
     """
     Does the full listing for the site given in the :file:`config.py` file.
     """
-
-    # Perform some checks of configuration file
-    if not config.UNMERGED_DIR_LOCATION.endswith('/store/unmerged'):
-        raise SuspiciousConditions(
-            '\n\'/store/unmerged\' not at the end of your PFN path: %s\n'
-            'This tool replaces the \'/store/unmerged\' part of the LFN with your PFN path.\n'
-            '(So it will expect \'/store/unmerged/protected/dir\' at \'%s\')\n'
-            'If that is intended, please modify the beginning of this script\'s main() function.'
-            % (config.UNMERGED_DIR_LOCATION, lfn_to_pfn('/store/unmerged/protected/dir')))
-
-    # Expect protected LFN list from Unified
-    if not PROTECTED_LIST:
-        raise SuspiciousConditions(
-            '\nNo directories are protected.\n'
-            'Check https://cmst2.web.cern.ch/cmst2/unified/listProtectedLFN.txt')
 
     # Start checks
     if config.WHICH_LIST == 'files':
