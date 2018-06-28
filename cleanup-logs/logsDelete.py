@@ -14,7 +14,7 @@ from argparse import ArgumentParser
 LS = ['/usr/bin/eos', 'ls', '-lt']
 NOW = int(time.time())
 YEAR = str(time.gmtime().tm_year)
-NPROC = 8
+NPROC = 4
 MAX_AGE = 60 * 86400
 
 # produce Node from output of eos ls -lt
@@ -78,12 +78,15 @@ class Node(object):
     def rm(self):
         if self.removed:
             return
-        if self.is_file:
-            remove(self.path)
-        else:
-            rmtree(self.path)
-            for c in self.children:
-                c.removed = True 
+        try:
+            if self.is_file:
+                remove(self.path)
+            else:
+                rmtree(self.path)
+                for c in self.children:
+                    c.removed = True 
+        except OSError:
+            pass 
         self.removed = True
     def traverse(self, max_age):
         if self.is_file:
@@ -142,9 +145,9 @@ if __name__ == '__main__':
         head.traverse(MAX_AGE) 
 
     if args.delete:
-        for r in head.get(MAX_AGE):
+        for r in tqdm(head.get(MAX_AGE)):
             r.rm()
     else:
         with open('dump.txt','w') as fdump: 
-            for r in head.get(MAX_AGE):
+            for r in tqdm(head.get(MAX_AGE)):
                 r.dummy_rm(fdump)

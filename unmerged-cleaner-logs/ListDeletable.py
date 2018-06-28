@@ -235,8 +235,11 @@ def os_perform(action, *args, **kwargs):
     while True:
         try:
             return action(*args, **kwargs)
-        except OSError:
+        except OSError as e:
+            if 'No such' in str(e):
+                return 
             print 'Could not perform action, sleeping and trying again'
+            print str(e)
             stdout.flush()
             time.sleep(2) 
 
@@ -428,25 +431,13 @@ def do_delete():
                 else:
                     # The default, 'posix', goes here
                     if os_perform(os.path.isdir, deleting):
-                        while True: 
-                            try:
-                                print 'About to delete %s' % deleting
-                                time.sleep(config.SLEEP_TIME)
-                                os_perform(shutil.rmtree, deleting)
-                                break
-                            except OSError:
-                                print 'Failed, trying again!'
-
+                        print 'About to delete %s' % deleting
+                        os_perform(shutil.rmtree, deleting)
             else:
+                print deleting 
                 if os_perform(os.path.isfile, deleting):
                     print 'About to delete %s' % deleting
-                    while True: 
-                        try:
-                            time.sleep(config.SLEEP_TIME)
-                            os_perform(os.remove, deleting)
-                            break
-                        except OSError:
-                            print 'Failed, trying again!'
+                    os_perform(os.remove, deleting)
 
 def get_unmerged_files():
     """
