@@ -151,3 +151,4 @@ if __name__ == '__main__':
         with open('dump.txt','w') as fdump: 
             for r in tqdm(head.get(MAX_AGE)):
                 r.dummy_rm(fdump)
+                r.dummy_rm(stdout) # so we can retain logging
